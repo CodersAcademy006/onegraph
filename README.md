@@ -145,18 +145,24 @@ Repository Source Code
 
 ```
 onegraph/
-├── onegraph-core/
+├── core/
 │   ├── core.py               # Central engine: graph build, export, deploy, risk analysis
 │   ├── test_core.py          # Integration test suite
 │   ├── ab_proof.py           # Controlled comparative test: Gemma 4 vs baseline
 │   └── AB_PROOF_RESULTS.md   # Benchmark metrics and proof records
-├── pr-agent-integration/
-│   ├── pr_graph_risk.py      # Native PR-Agent tool implementation
-│   └── pr_agent.py.diff      # Two-line patch registering /graph_risk command
+├── integrations/
+│   ├── pr-agent/
+│   │   ├── pr_graph_risk.py  # Native PR-Agent tool implementation
+│   │   └── pr_agent.py.diff  # Two-line patch registering /graph_risk command
+│   └── deepwiki/
+│       ├── research.py       # Patched research_chat(), full file
+│       ├── research.py.diff  # The real diff against deepwiki-open
+│       └── test_onegraph_gate.py  # Standalone smoke test for the gate
 ├── graphs-site/
 │   ├── index.html            # Production landing portal with live showcase gallery
 │   └── graphs/               # Deployed standalone interactive HTML visualizers
-└── docs/                     # Production visual assets and documentation screenshots
+├── docs/                     # Visual assets and documentation screenshots
+└── onegraph                  # One-command live demo: ./onegraph <github-url>
 ```
 
 ---
@@ -182,7 +188,7 @@ export VERCEL_TOKEN="your-vercel-token" # optional for deployment
 
 ```python
 import sys
-sys.path.insert(0, "onegraph-core")
+sys.path.insert(0, "core")
 
 from pathlib import Path
 from core import build_graph, export_graph_html, analyze_risk, graph_stats
@@ -217,18 +223,31 @@ GITHUB__USER_TOKEN=$(gh auth token) CONFIG__GIT_PROVIDER=github \
   pr-agent --pr_url https://github.com/org/repo/pull/1 graph_risk
 ```
 
+### Live demo on any repo
+
+For showing OneGraph a repo on the spot, `./onegraph` wraps the clone,
+extract, export, and deploy steps into one command:
+
+```bash
+./onegraph https://github.com/<owner>/<repo>
+```
+
+Prints the real node and edge counts as it extracts, then the public URL of
+the deployed interactive graph. No pre-warming or caching between runs yet;
+every call is a full clone and extract.
+
 ---
 
 ## Verification: graph retrieval versus keyword retrieval
 
-[`onegraph-core/ab_proof.py`](onegraph-core/ab_proof.py) runs the same
+[`core/ab_proof.py`](core/ab_proof.py) runs the same
 question through Gemma 4 twice against `pallets/flask`: once with a naive
 keyword-matched snippet baseline, once with Graphify's real graph traversal
 as context. Both runs check every citation the model makes against the
 actual file and line on disk.
 
 The honest, reproducible result, recorded in full in
-[`onegraph-core/AB_PROOF_RESULTS.md`](onegraph-core/AB_PROOF_RESULTS.md), is
+[`core/AB_PROOF_RESULTS.md`](core/AB_PROOF_RESULTS.md), is
 not that the keyword baseline hallucinated. Given verbatim, line-numbered
 snippets, Gemma 4 cited only what was literally in front of it: 2 out of 2
 citations real. The real difference is coverage. The baseline's keyword
@@ -238,6 +257,58 @@ traversal surfaced the complete cross-file call chain, `wsgi_app` to
 `full_dispatch_request` to `dispatch_request` to `Scaffold.add_url_rule` to
 `View`, 6 out of 6 citations real. Keyword search finds a word; graph
 traversal finds the chain.
+
+---
+
+## Pluggable, not rebuilt
+
+OneGraph's whole pitch is that one real graph can be wired into existing
+open-source tools as a drop-in context source, instead of becoming another
+bespoke UI. Both integrations below are real, reviewable diffs against the
+actual upstream project, not a description of one.
+
+| Tool | What changed | Diff |
+|---|---|---|
+| [qodo-ai/pr-agent](https://github.com/qodo-ai/pr-agent) | Registers a new `/graph_risk` command. Two lines in `command2class`. | [`integrations/pr-agent/pr_agent.py.diff`](integrations/pr-agent/pr_agent.py.diff) |
+| [AsyncFuncAI/deepwiki-open](https://github.com/AsyncFuncAI/deepwiki-open) | Gates `research_chat()`'s context source behind `ONEGRAPH_BACKEND=graphify`. Unset, the original embedding-RAG path is untouched. | [`integrations/deepwiki/research.py.diff`](integrations/deepwiki/research.py.diff) |
+
+The PR-Agent side is live-verified against a real pull request (see
+[Visual Demonstration](#1-automated-pull-request-code-review) above). The deepwiki-open side is tested with a
+standalone smoke test ([`integrations/deepwiki/test_onegraph_gate.py`](integrations/deepwiki/test_onegraph_gate.py))
+that checks both branches of the gate without booting the full app, but has
+not been run against deepwiki-open's live server end to end.
+
+**The pitch, in three sentences:** Graphify builds the real dependency graph
+once, for zero LLM cost. Gemma 4 only ever narrates real traversals of that
+graph, so a citation either points at code that exists or the model has
+nothing to say. Instead of one new tool, that grounding drops into
+PR-Agent's code review and deepwiki-open's chat as a two-line and a
+one-line change, proving the same graph generalizes past the one demo it
+was built for.
+
+## Measured cost
+
+Graph construction is architecturally free: `graphify extract` is pure
+tree-sitter AST parsing, zero LLM calls, for any repo at any size. The
+measured numbers below are for narration, the one step that does call a
+model.
+
+One real `/graph_risk`-equivalent call against `pallets/flask` ("how does
+Flask dispatch an incoming request to the right view function"), run
+locally through Ollama (`gemma4:12b-it-q4_K_M`), reported by Ollama's own
+response:
+
+| Metric | Value |
+|---|---|
+| Input tokens (graph context + instruction) | 2,438 |
+| Output tokens (the review) | 1,658 |
+| Wall time | 132.8s |
+| API cost | $0, genuinely local inference, no billed endpoint |
+
+The context sent was 6,697 characters, Graphify's real traversal output for
+that question, not the repository's full source. Narrower context is a
+direct effect of querying a graph instead of retrieving loosely-related
+chunks: the model sees only the nodes the traversal actually reached.
 
 ---
 

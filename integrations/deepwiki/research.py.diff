@@ -1,0 +1,153 @@
+diff --git a/api/services/research.py b/api/services/research.py
+index ccf73ac..5b66238 100644
+--- a/api/services/research.py
++++ b/api/services/research.py
+@@ -1,6 +1,9 @@
+ import asyncio
++import os
++import sys
+ from collections.abc import AsyncIterator, Callable
+ from functools import partial
++from pathlib import Path
+ 
+ from api.chat import ChatStreamer, is_token_limit_error, prompt_builder
+ from api.config import configs, get_model_config
+@@ -18,6 +21,17 @@ from api.schemas import ChatCompletionRequest
+ 
+ logger = get_logger(__name__)
+ 
++# OneGraph (Hacktoberfest): ONEGRAPH_BACKEND=graphify answers from a real
++# tree-sitter dependency graph instead of embedding-RAG. Unset -> stock
++# deepwiki-open behavior below is untouched.
++onegraph_core = None
++if os.environ.get("ONEGRAPH_BACKEND") == "graphify":
++    sys.path.insert(0, os.environ.get(
++        "ONEGRAPH_CORE_PATH",
++        str(Path(__file__).resolve().parents[4] / "core"),
++    ))
++    import core as onegraph_core
++
+ 
+ # Maximum token limit for embedding models
+ MAX_INPUT_TOKENS = 7500  # Safe threshold below 8192 token limit
+@@ -145,58 +159,71 @@ async def research_chat(
+     context_text = ""
+ 
+     if not input_too_large:
+-        try:
+-            rag_query = query
+-            # Try to perform RAG retrieval
++        if onegraph_core is not None:
+             try:
+-                # This will use the actual RAG implementation
+-                retrieved_documents = await rag.acall(
+-                    rag_query, language=request.language
+-                )
++                repo_path = Path(repo.save_path)
++                graph_path = repo_path / "graphify-out" / "graph.json"
++                if not graph_path.exists():
++                    onegraph_core.build_graph(repo_path)
++                context_text = onegraph_core.query_graph(repo_path, query)
++                if not context_text.strip():
++                    logger.warning("No results from graphify query")
++            except Exception as e:
++                logger.error(f"Error in graphify retrieval: {str(e)}")
++                context_text = ""
++        else:
++            try:
++                rag_query = query
++                # Try to perform RAG retrieval
++                try:
++                    # This will use the actual RAG implementation
++                    retrieved_documents = await rag.acall(
++                        rag_query, language=request.language
++                    )
+ 
+-                if retrieved_documents and retrieved_documents[0].documents:
+-                    # Format context for the prompt in a more structured way
+-                    documents = retrieved_documents[0].documents
+-                    logger.info(f"Retrieved {len(documents)} documents")
+-
+-                    # Group documents by file path
+-                    docs_by_file = {}
+-                    for doc in documents:
+-                        file_path = doc.meta_data.get("file_path", "unknown")
+-                        if file_path not in docs_by_file:
+-                            docs_by_file[file_path] = []
+-                        docs_by_file[file_path].append(doc)
+-
+-                    # Format context text with file path grouping
+-                    context_parts = []
+-                    for file_path, docs in docs_by_file.items():
+-                        # Add file header with metadata
+-                        header = f"## File Path: {file_path}\n\n"
+-                        # Add document content, annotating each chunk with its
+-                        # real line range when available so the model can cite lines.
+-                        chunk_texts = []
+-                        for doc in docs:
+-                            start_line = doc.meta_data.get("start_line")
+-                            end_line = doc.meta_data.get("end_line")
+-                            if start_line and end_line:
+-                                chunk_texts.append(
+-                                    f"[lines {start_line}-{end_line}]\n{doc.text}"
+-                                )
+-                            else:
+-                                chunk_texts.append(doc.text)
+-                        content = "\n\n".join(chunk_texts)
+-
+-                        context_parts.append(f"{header}{content}")
+-
+-                    # Join all parts with clear separation
+-                    context_text = "\n\n" + "-" * 10 + "\n\n".join(context_parts)
+-                else:
+-                    logger.warning("No documents retrieved from RAG")
++                    if retrieved_documents and retrieved_documents[0].documents:
++                        # Format context for the prompt in a more structured way
++                        documents = retrieved_documents[0].documents
++                        logger.info(f"Retrieved {len(documents)} documents")
++
++                        # Group documents by file path
++                        docs_by_file = {}
++                        for doc in documents:
++                            file_path = doc.meta_data.get("file_path", "unknown")
++                            if file_path not in docs_by_file:
++                                docs_by_file[file_path] = []
++                            docs_by_file[file_path].append(doc)
++
++                        # Format context text with file path grouping
++                        context_parts = []
++                        for file_path, docs in docs_by_file.items():
++                            # Add file header with metadata
++                            header = f"## File Path: {file_path}\n\n"
++                            # Add document content, annotating each chunk with its
++                            # real line range when available so the model can cite lines.
++                            chunk_texts = []
++                            for doc in docs:
++                                start_line = doc.meta_data.get("start_line")
++                                end_line = doc.meta_data.get("end_line")
++                                if start_line and end_line:
++                                    chunk_texts.append(
++                                        f"[lines {start_line}-{end_line}]\n{doc.text}"
++                                    )
++                                else:
++                                    chunk_texts.append(doc.text)
++                            content = "\n\n".join(chunk_texts)
++
++                            context_parts.append(f"{header}{content}")
++
++                        # Join all parts with clear separation
++                        context_text = "\n\n" + "-" * 10 + "\n\n".join(context_parts)
++                    else:
++                        logger.warning("No documents retrieved from RAG")
++                except Exception as e:
++                    logger.error(f"Error in RAG retrieval: {str(e)}")
+             except Exception as e:
+-                logger.error(f"Error in RAG retrieval: {str(e)}")
+-        except Exception as e:
+-            logger.error(f"Error retrieving documents: {str(e)}")
+-            context_text = ""
++                logger.error(f"Error retrieving documents: {str(e)}")
++                context_text = ""
+ 
+     # Get repository information
+     repo_url = request.repo_url

@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""One-command live demo: ./onegraph <github-url> [slug]
+
+Clones the repo, extracts the real dependency graph, exports Graphify's
+interactive viewer, deploys it, and prints the public URL. For a judge
+asking "can you run it on my repo right now."
+
+ponytail: no pre-warming/caching of repeat demo repos, every run is a full
+clone + extract. Fine for a single live demo; add an LRU cache keyed on repo
+URL if this needs to survive back-to-back requests during judging.
+"""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "core"))
+import core  # noqa: E402
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        print(f"usage: {sys.argv[0]} <github-url> [slug]", file=sys.stderr)
+        return 1
+
+    url = sys.argv[1]
+    slug = sys.argv[2] if len(sys.argv) > 2 else url.rstrip("/").split("/")[-1]
+
+    print(f"[1/4] cloning {url}")
+    path = core.clone_repo(url)
+
+    print(f"[2/4] graphify extract --code-only ({path})")
+    core.build_graph(path)
+    nodes, edges = core.graph_stats(path)
+    print(f"      {nodes:,} nodes / {edges:,} edges, real count from graph.json")
+
+    print("[3/4] graphify label + export html")
+    html_path = core.export_graph_html(path)
+
+    print(f"[4/4] deploying as '{slug}'")
+    site_dir = Path(__file__).resolve().parent / "graphs-site"
+    deployed_url = core.deploy_graph_html(html_path, slug, site_dir)
+
+    print()
+    print(f"Live: {deployed_url}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

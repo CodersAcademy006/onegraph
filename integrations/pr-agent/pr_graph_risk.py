@@ -18,7 +18,7 @@ from pathlib import Path
 from pr_agent.git_providers import get_git_provider_with_context
 from pr_agent.log import get_logger
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "onegraph-core"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "core"))
 import core as onegraph_core  # noqa: E402
 
 
