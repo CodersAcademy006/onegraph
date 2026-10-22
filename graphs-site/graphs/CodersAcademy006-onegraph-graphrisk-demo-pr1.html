@@ -70,6 +70,48 @@
   document.documentElement.setAttribute('data-theme', t);
 })();
 </script>
+<style id="onegraph-ui-polish">
+/* onegraph: materials + motion (apple-design) on top of graphify's flat,
+   static sidebar — translucent surfaces instead of solid fills, hover/press
+   feedback, and real transitions instead of every state snapping instantly. */
+#sidebar {
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.25);
+}
+html, body, #sidebar { transition: background-color 220ms ease, color 220ms ease; }
+#theme-wrap button, .search-item, .neighbor-link, .legend-item, #search {
+  transition: background-color 160ms ease, color 160ms ease, transform 120ms ease, border-color 160ms ease;
+}
+#theme-wrap button:active { transform: scale(0.96); }
+.legend-item:hover, .neighbor-link:hover, .search-item:hover { transform: translateX(2px); }
+.legend-item.dimmed { transition: opacity 200ms ease; }
+#info-content { transition: opacity 160ms ease; }
+#info-content.og-swap { opacity: 0; }
+/* onegraph: canvas motion — depth + a fade-reveal so physics settles behind
+   the curtain instead of visibly jittering raw on load. Hover/select grow
+   and edge highlight are native vis-network options (chosen callbacks),
+   set via setOptions below, not CSS. */
+#graph { opacity: 0; transition: opacity 450ms ease; }
+#graph.og-ready { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  #graph { opacity: 1; transition: none; }
+}
+#theme-wrap button svg, .og-stat svg, .og-search-icon { width: 13px; height: 13px; vertical-align: -2px; opacity: 0.8; }
+#theme-wrap button svg { margin-right: 3px; }
+#search-wrap { position: relative; }
+#search { padding-left: 28px; }
+.og-search-icon { position: absolute; left: 22px; top: 22px; pointer-events: none; }
+#stats { display: flex; gap: 12px; flex-wrap: wrap; }
+.og-stat { display: inline-flex; align-items: center; gap: 4px; }
+.og-stat b { font-variant-numeric: tabular-nums; color: var(--text); }
+@media (prefers-reduced-motion: reduce) {
+  #theme-wrap button, .search-item, .neighbor-link, .legend-item, #search,
+  #info-content, html, body, #sidebar {
+    transition: opacity 150ms ease !important; transform: none !important;
+  }
+}
+</style>
 </head>
 <body>
 <div id="graph"></div>
@@ -196,6 +238,7 @@ applyTheme(themePref());
 
 network.once('stabilizationIterationsDone', () => {
   network.setOptions({ physics: { enabled: false } });
+  container.classList.add('og-ready'); // onegraph: canvas motion
 });
 
 function showInfo(nodeId) {
@@ -469,6 +512,123 @@ network.on('afterDrawing', function(ctx) {
         ctx.restore();
     });
 });
+</script>
+<script id="onegraph-ui-polish-js">
+(async function () {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let animate = null;
+  try {
+    ({ animate } = await import("https://cdn.jsdelivr.net/npm/motion@14.6.0/+esm"));
+  } catch (e) { /* offline or blocked CDN: everything below degrades to instant, no motion */ }
+
+  const lucideScript = document.createElement('script');
+  lucideScript.src = "https://cdn.jsdelivr.net/npm/lucide@1.61.0/dist/umd/lucide.js";
+  lucideScript.onload = function () {
+    var light = document.querySelector('[data-theme-choice="light"]');
+    var dark = document.querySelector('[data-theme-choice="dark"]');
+    var system = document.querySelector('[data-theme-choice="system"]');
+    if (light) light.insertAdjacentHTML('afterbegin', '<svg data-lucide="sun"></svg>');
+    if (dark) dark.insertAdjacentHTML('afterbegin', '<svg data-lucide="moon"></svg>');
+    if (system) system.insertAdjacentHTML('afterbegin', '<svg data-lucide="monitor"></svg>');
+    var searchWrap = document.getElementById('search-wrap');
+    if (searchWrap) searchWrap.insertAdjacentHTML('beforeend', '<svg class="og-search-icon" data-lucide="search"></svg>');
+
+    var statsEl = document.getElementById('stats');
+    var m = statsEl && statsEl.textContent.match(/(\d+)\s*nodes.*?(\d+)\s*edges.*?(\d+)\s*communities/i);
+    if (statsEl && m) {
+      var counts = { nodes: Number(m[1]), edges: Number(m[2]), communities: Number(m[3]) };
+      statsEl.innerHTML =
+        '<span class="og-stat"><svg data-lucide="circle-dot"></svg><b data-count="' + counts.nodes + '">0</b> nodes</span>' +
+        '<span class="og-stat"><svg data-lucide="share-2"></svg><b data-count="' + counts.edges + '">0</b> edges</span>' +
+        '<span class="og-stat"><svg data-lucide="layers"></svg><b data-count="' + counts.communities + '">0</b> communities</span>';
+    }
+    window.lucide.createIcons();
+    if (statsEl) {
+      statsEl.querySelectorAll('b[data-count]').forEach(function (el) {
+        var target = Number(el.dataset.count);
+        if (reduceMotion || !animate || !target) { el.textContent = target; return; }
+        animate(0, target, {
+          duration: 0.9, easing: [0.16, 1, 0.3, 1],
+          onUpdate: function (latest) { el.textContent = Math.round(latest); },
+        });
+      });
+    }
+  };
+  document.head.appendChild(lucideScript);
+
+  // Critically-damped focus (apple-design: no overshoot on a direct click,
+  // not a flick) instead of vis-network's default easeInOutQuad.
+  if (typeof focusNode === 'function' && typeof network !== 'undefined') {
+    window.focusNode = function (nodeId) {
+      var n = nodesDS.get(nodeId);
+      if (!n) return;
+      network.focus(nodeId, {
+        scale: 1.4,
+        animation: reduceMotion ? false : { duration: 450, easingFunction: 'easeOutCubic' },
+      });
+      network.selectNodes([nodeId]);
+      showInfo(nodeId);
+    };
+  }
+
+  // Fade the info panel on content swap instead of an instant snap.
+  var infoContent = document.getElementById('info-content');
+  if (infoContent && window.MutationObserver && !reduceMotion) {
+    var fading = false;
+    new MutationObserver(function () {
+      if (fading) return;
+      fading = true;
+      infoContent.classList.add('og-swap');
+      requestAnimationFrame(function () {
+        infoContent.classList.remove('og-swap');
+        fading = false;
+      });
+    }).observe(infoContent, { childList: true });
+  }
+
+  // Sidebar arrives with a soft slide-fade instead of appearing instantly.
+  var sidebar = document.getElementById('sidebar');
+  if (sidebar && animate && !reduceMotion) {
+    animate(sidebar, { opacity: [0, 1], x: [16, 0] }, { duration: 0.5, easing: [0.16, 1, 0.3, 1] });
+  }
+
+  // onegraph: canvas motion — native vis-network options, no custom RAF
+  // loop. Depth shadow on every node; hover/select grow via the engine's
+  // own per-frame chosen callback (apple-design: respond instantly, no
+  // animation curve needed since vis redraws continuously while hovering);
+  // connected edges brighten on node hover, bounded by degree so it stays
+  // cheap on the 48k-node Megatron graph, not a dataset-wide dim pass.
+  network.setOptions({
+    nodes: {
+      shadow: { enabled: true, size: 8, x: 0, y: 3, color: 'rgba(0,0,0,0.3)' },
+      chosen: {
+        node: function (values, id, selected, hovering) {
+          if (hovering) values.size *= 1.15;
+          if (selected) { values.size *= 1.3; values.borderWidth *= 2; }
+        },
+      },
+    },
+    edges: {
+      hoverWidth: 2,
+      chosen: {
+        edge: function (values, id, selected, hovering) {
+          if (hovering || selected) values.width *= 2.2;
+        },
+      },
+    },
+  });
+
+  let hoverEdgeOriginal = null;
+  network.on('hoverNode', params => {
+    const ids = network.getConnectedEdges(params.node);
+    hoverEdgeOriginal = ids.map(id => ({ id, width: edgesDS.get(id).width }));
+    edgesDS.update(ids.map(id => ({ id, width: (edgesDS.get(id).width || 1) + 2.5 })));
+  });
+  network.on('blurNode', () => {
+    if (hoverEdgeOriginal) edgesDS.update(hoverEdgeOriginal);
+    hoverEdgeOriginal = null;
+  });
+})();
 </script>
 </body>
 </html>

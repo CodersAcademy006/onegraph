@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/lucide@0.263.1/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@1.61.0/dist/umd/lucide.js"></script>
 <style>
   :root { color-scheme: dark; }
   body { background: #06100a; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -79,7 +79,7 @@
     </div>
 
     <div data-anim="hero-cta" class="mt-9 flex flex-wrap items-center justify-center gap-3">
-      <a href="https://github.com/CodersAcademy006/onegraph-graphrisk-demo/pull/1" target="_blank" rel="noopener"
+      <a href="https://github.com/CodersAcademy006/onegraph-flask-demo/pull/1" target="_blank" rel="noopener"
          class="inline-flex items-center gap-2 rounded-xl bg-zinc-100 text-zinc-900 px-5 py-2.5 text-sm font-semibold hover:bg-white transition-colors">
         <i data-lucide="github" class="w-4 h-4"></i>
         Live PR demo
@@ -112,33 +112,97 @@
   </section>
 
   <section data-anim="stats" class="pb-24">
-    <div class="rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/70 to-zinc-900/20 p-8 sm:p-10">
-      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
-        <div>
-          <p class="mono text-xs uppercase tracking-wider text-emerald-400/80 font-semibold">Real scale, not a toy demo</p>
-          <h2 class="mt-2 text-2xl sm:text-3xl font-bold text-zinc-100">Flask, mapped end to end</h2>
-          <p class="mt-2 text-sm text-zinc-500 max-w-md">Every node and edge below is a real extracted symbol from pallets/flask &mdash; nothing trimmed, nothing simulated.</p>
+    <div class="mb-7">
+      <p class="mono text-xs uppercase tracking-wider text-emerald-400/80 font-semibold">Real scale, not a toy demo</p>
+      <h2 class="mt-2 text-2xl sm:text-3xl font-bold text-zinc-100">Four real repos, mapped end to end</h2>
+      <p class="mt-2 text-sm text-zinc-500 max-w-lg leading-relaxed">Every node and edge below is a real extracted symbol &mdash; Graphify ran on the actual public repo, nothing trimmed, nothing simulated.</p>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-4">
+
+      <a href="/graphs/showcase-flask.html"
+         class="group rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/70 to-zinc-900/20 p-6 hover:border-emerald-400/40 transition-colors">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-semibold text-zinc-100">pallets / flask</h3>
+            <p class="mt-0.5 text-xs text-zinc-500">web framework</p>
+          </div>
+          <i data-lucide="arrow-up-right" class="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors shrink-0"></i>
         </div>
-        <a href="/graphs/showcase-flask.html"
-           class="shrink-0 inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 transition-colors px-5 py-2.5 text-sm font-semibold text-zinc-950">
-          Explore the graph
-          <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
-        </a>
-      </div>
-      <div class="mt-8 grid grid-cols-3 gap-3 sm:gap-4">
-        <div class="hl-box rounded-xl py-4 text-center">
-          <div class="mono text-3xl sm:text-4xl font-bold text-zinc-100">2,151</div>
-          <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">nodes</div>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="hl-box rounded-xl py-3 text-center">
+            <div class="mono text-2xl font-bold text-zinc-100">2,151</div>
+            <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">nodes</div>
+          </div>
+          <div class="hl-box rounded-xl py-3 text-center">
+            <div class="mono text-2xl font-bold text-zinc-100">3,569</div>
+            <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">edges</div>
+          </div>
         </div>
-        <div class="hl-box rounded-xl py-4 text-center">
-          <div class="mono text-3xl sm:text-4xl font-bold text-zinc-100">3,569</div>
-          <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">edges</div>
+      </a>
+
+      <a href="/graphs/megatron-lm.html"
+         class="group rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/70 to-zinc-900/20 p-6 hover:border-emerald-400/40 transition-colors">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-semibold text-zinc-100">NVIDIA / Megatron-LM</h3>
+            <p class="mt-0.5 text-xs text-zinc-500">LLM training framework</p>
+          </div>
+          <i data-lucide="arrow-up-right" class="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors shrink-0"></i>
         </div>
-        <div class="hl-box rounded-xl py-4 text-center">
-          <div class="mono text-3xl sm:text-4xl font-bold text-zinc-100">205</div>
-          <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">communities</div>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="hl-box rounded-xl py-3 text-center">
+            <div class="mono text-2xl font-bold text-zinc-100">48,295</div>
+            <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">nodes</div>
+          </div>
+          <div class="hl-box rounded-xl py-3 text-center">
+            <div class="mono text-2xl font-bold text-zinc-100">133,164</div>
+            <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">edges</div>
+          </div>
         </div>
-      </div>
+      </a>
+
+      <a href="/graphs/graphify-self.html"
+         class="group rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/70 to-zinc-900/20 p-6 hover:border-emerald-400/40 transition-colors">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-semibold text-zinc-100">Graphify-Labs / graphify</h3>
+            <p class="mt-0.5 text-xs text-zinc-500">the sponsor tool, graphing itself</p>
+          </div>
+          <i data-lucide="arrow-up-right" class="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors shrink-0"></i>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="hl-box rounded-xl py-3 text-center">
+            <div class="mono text-2xl font-bold text-zinc-100">18,552</div>
+            <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">nodes</div>
+          </div>
+          <div class="hl-box rounded-xl py-3 text-center">
+            <div class="mono text-2xl font-bold text-zinc-100">42,018</div>
+            <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">edges</div>
+          </div>
+        </div>
+      </a>
+
+      <a href="/graphs/supabase.html"
+         class="group rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/70 to-zinc-900/20 p-6 hover:border-emerald-400/40 transition-colors">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 class="font-semibold text-zinc-100">supabase / supabase</h3>
+            <p class="mt-0.5 text-xs text-zinc-500">Postgres dev platform</p>
+          </div>
+          <i data-lucide="arrow-up-right" class="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors shrink-0"></i>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="hl-box rounded-xl py-3 text-center">
+            <div class="mono text-2xl font-bold text-zinc-100">65,361</div>
+            <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">nodes</div>
+          </div>
+          <div class="hl-box rounded-xl py-3 text-center">
+            <div class="mono text-2xl font-bold text-zinc-100">247,294</div>
+            <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">edges</div>
+          </div>
+        </div>
+      </a>
+
     </div>
   </section>
 
