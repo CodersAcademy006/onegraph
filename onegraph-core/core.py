@@ -16,7 +16,9 @@ import uuid
 from pathlib import Path
 
 GEMINI_KEY_FILE = os.path.expanduser("~/.scoreone_gemini_keys")
-GEMMA_MODEL = "gemma-4-26b-a4b-it"
+GEMMA_MODEL = "gemma-4-26b-a4b-it"  # cloud (Gemini API), set ONEGRAPH_GEMMA_BACKEND=cloud
+GEMMA_MODEL_LOCAL = "gemma4:12b-it-q4_K_M"  # default: local Ollama, no quota/outage risk
+OLLAMA_URL = "http://localhost:11434/api/generate"
 _GEMINI_KEY_RE = re.compile(r"AIza[A-Za-z0-9_-]{35}")
 GRAPHS_SITE_URL = "https://graphs-site-omega.vercel.app"
 
@@ -77,19 +79,32 @@ def query_graph(path: Path, question: str) -> str:
 
 
 def summarize(context: str, instruction: str) -> str:
-    """One Gemma 4 call via Gemini API. Context must come from graphify output
-    (affected/query/graph.json), never raw file content — that's the whole
-    point, citations trace back to a real graph node, not a hallucination."""
-    key = _gemini_key()
-    url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"{GEMMA_MODEL}:generateContent?key={key}")
+    """One Gemma 4 call. Local Ollama by default — no API key, no quota, no
+    outage risk (the hosted Gemini API's gemma-4-* models were down mid-event
+    on 2026-10-22; the local gemma4:12b-it quant isn't affected). Set
+    ONEGRAPH_GEMMA_BACKEND=cloud to use the Gemini API instead. Context must
+    come from graphify output (affected/query/graph.json), never raw file
+    content — that's the whole point, citations trace back to a real graph
+    node, not a hallucination."""
+    prompt = f"{instruction}\n\nCONTEXT:\n{context}"
+
+    if os.environ.get("ONEGRAPH_GEMMA_BACKEND") == "cloud":
+        key = _gemini_key()
+        url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+               f"{GEMMA_MODEL}:generateContent?key={key}")
+        body = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.load(resp)
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+
     body = json.dumps({
-        "contents": [{"parts": [{"text": f"{instruction}\n\nCONTEXT:\n{context}"}]}]
+        "model": GEMMA_MODEL_LOCAL, "prompt": prompt, "stream": False,
     }).encode()
-    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    req = urllib.request.Request(OLLAMA_URL, data=body, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=180) as resp:
         data = json.load(resp)
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+    return data["response"]
 
 
 def graph_stats(path: Path) -> tuple[int, int]:
