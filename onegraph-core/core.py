@@ -69,6 +69,29 @@ def affected(path: Path, symbol: str, depth: int = 2) -> str:
     return r.stdout
 
 
+def blast_radius_summary(affected_text: str, limit: int = 4) -> tuple[int, list[str]]:
+    """Parse `affected()`'s raw '- symbol() [relation] file:Lxx' lines into a
+    count + a few example names, for inline PR comments. Pure data, no LLM:
+    the line-level marker is a graph fact, not a narration."""
+    lines = [l for l in affected_text.splitlines() if l.startswith("- ")]
+    examples = [l[2:].split(" [", 1)[0] for l in lines[:limit]]
+    return len(lines), examples
+
+
+def risk_level(blast_radius_counts: list[int]) -> str:
+    """High/Medium/Low from the real total blast radius, not an LLM's
+    self-rating — a count is a fact, an LLM's opinion of its own severity
+    isn't. Thresholds are a judgment call, not graphify output."""
+    total = sum(blast_radius_counts)
+    if total >= 15:
+        return "High"
+    if total >= 5:
+        return "Medium"
+    if total > 0:
+        return "Low"
+    return "None"
+
+
 def query_graph(path: Path, question: str) -> str:
     r = subprocess.run(
         ["graphify", "query", question,
@@ -156,18 +179,22 @@ def export_graph_html(path: Path) -> Path:
     still leaves graphify's own heuristic community names, never a hard
     failure for the whole run."""
     label_env = {**os.environ, "GEMINI_API_KEY": _gemini_key()}
+    try:
+        subprocess.run(
+            ["graphify", "label", ".", "--backend", "gemini"],
+            capture_output=True, text=True, cwd=str(path), env=label_env, timeout=300,
+        )
+    except subprocess.TimeoutExpired:
+        pass  # huge repo, many communities: keep graphify's own heuristic names, don't block export
     subprocess.run(
-        ["graphify", "label", ".", "--backend", "gemini"],
-        capture_output=True, text=True, cwd=str(path), env=label_env,
-    )
-    subprocess.run(
-        ["graphify", "export", "html", "--graph", str(path / "graphify-out" / "graph.json")],
+        ["graphify", "export", "html", "--graph", str(path / "graphify-out" / "graph.json"), "--node-limit", "6000"],
         check=True, capture_output=True, text=True, cwd=str(path),
     )
     html_path = path / "graphify-out" / "graph.html"
     if not html_path.exists():
         raise RuntimeError(f"graphify export html ran but {html_path} missing")
     _boost_node_labels(html_path)
+    _add_ui_polish(html_path)
     return html_path
 
 
@@ -188,6 +215,140 @@ def _boost_node_labels(html_path: Path) -> None:
     text = html_path.read_text()
     if "</body>" in text and "onegraph: zoom-scaled node labels" not in text:
         html_path.write_text(text.replace("</body>", _LABEL_SCALING_SNIPPET, 1))
+
+
+_UI_POLISH_STYLE = """<style id="onegraph-ui-polish">
+/* onegraph: materials + motion (apple-design) on top of graphify's flat,
+   static sidebar — translucent surfaces instead of solid fills, hover/press
+   feedback, and real transitions instead of every state snapping instantly. */
+#sidebar {
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.25);
+}
+html, body, #sidebar { transition: background-color 220ms ease, color 220ms ease; }
+#theme-wrap button, .search-item, .neighbor-link, .legend-item, #search {
+  transition: background-color 160ms ease, color 160ms ease, transform 120ms ease, border-color 160ms ease;
+}
+#theme-wrap button:active { transform: scale(0.96); }
+.legend-item:hover, .neighbor-link:hover, .search-item:hover { transform: translateX(2px); }
+.legend-item.dimmed { transition: opacity 200ms ease; }
+#info-content { transition: opacity 160ms ease; }
+#info-content.og-swap { opacity: 0; }
+#theme-wrap button svg, .og-stat svg, .og-search-icon { width: 13px; height: 13px; vertical-align: -2px; opacity: 0.8; }
+#theme-wrap button svg { margin-right: 3px; }
+#search-wrap { position: relative; }
+#search { padding-left: 28px; }
+.og-search-icon { position: absolute; left: 22px; top: 22px; pointer-events: none; }
+#stats { display: flex; gap: 12px; flex-wrap: wrap; }
+.og-stat { display: inline-flex; align-items: center; gap: 4px; }
+.og-stat b { font-variant-numeric: tabular-nums; color: var(--text); }
+@media (prefers-reduced-motion: reduce) {
+  #theme-wrap button, .search-item, .neighbor-link, .legend-item, #search,
+  #info-content, html, body, #sidebar {
+    transition: opacity 150ms ease !important; transform: none !important;
+  }
+}
+</style>
+</head>"""
+
+_UI_POLISH_SCRIPT = """<script id="onegraph-ui-polish-js">
+(async function () {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let animate = null;
+  try {
+    ({ animate } = await import("https://cdn.jsdelivr.net/npm/motion@14.6.0/+esm"));
+  } catch (e) { /* offline or blocked CDN: everything below degrades to instant, no motion */ }
+
+  const lucideScript = document.createElement('script');
+  lucideScript.src = "https://cdn.jsdelivr.net/npm/lucide@1.61.0/dist/umd/lucide.js";
+  lucideScript.onload = function () {
+    var light = document.querySelector('[data-theme-choice="light"]');
+    var dark = document.querySelector('[data-theme-choice="dark"]');
+    var system = document.querySelector('[data-theme-choice="system"]');
+    if (light) light.insertAdjacentHTML('afterbegin', '<svg data-lucide="sun"></svg>');
+    if (dark) dark.insertAdjacentHTML('afterbegin', '<svg data-lucide="moon"></svg>');
+    if (system) system.insertAdjacentHTML('afterbegin', '<svg data-lucide="monitor"></svg>');
+    var searchWrap = document.getElementById('search-wrap');
+    if (searchWrap) searchWrap.insertAdjacentHTML('beforeend', '<svg class="og-search-icon" data-lucide="search"></svg>');
+
+    var statsEl = document.getElementById('stats');
+    var m = statsEl && statsEl.textContent.match(/(\\d+)\\s*nodes.*?(\\d+)\\s*edges.*?(\\d+)\\s*communities/i);
+    if (statsEl && m) {
+      var counts = { nodes: Number(m[1]), edges: Number(m[2]), communities: Number(m[3]) };
+      statsEl.innerHTML =
+        '<span class="og-stat"><svg data-lucide="circle-dot"></svg><b data-count="' + counts.nodes + '">0</b> nodes</span>' +
+        '<span class="og-stat"><svg data-lucide="share-2"></svg><b data-count="' + counts.edges + '">0</b> edges</span>' +
+        '<span class="og-stat"><svg data-lucide="layers"></svg><b data-count="' + counts.communities + '">0</b> communities</span>';
+    }
+    window.lucide.createIcons();
+    if (statsEl) {
+      statsEl.querySelectorAll('b[data-count]').forEach(function (el) {
+        var target = Number(el.dataset.count);
+        if (reduceMotion || !animate || !target) { el.textContent = target; return; }
+        animate(0, target, {
+          duration: 0.9, easing: [0.16, 1, 0.3, 1],
+          onUpdate: function (latest) { el.textContent = Math.round(latest); },
+        });
+      });
+    }
+  };
+  document.head.appendChild(lucideScript);
+
+  // Critically-damped focus (apple-design: no overshoot on a direct click,
+  // not a flick) instead of vis-network's default easeInOutQuad.
+  if (typeof focusNode === 'function' && typeof network !== 'undefined') {
+    window.focusNode = function (nodeId) {
+      var n = nodesDS.get(nodeId);
+      if (!n) return;
+      network.focus(nodeId, {
+        scale: 1.4,
+        animation: reduceMotion ? false : { duration: 450, easingFunction: 'easeOutCubic' },
+      });
+      network.selectNodes([nodeId]);
+      showInfo(nodeId);
+    };
+  }
+
+  // Fade the info panel on content swap instead of an instant snap.
+  var infoContent = document.getElementById('info-content');
+  if (infoContent && window.MutationObserver && !reduceMotion) {
+    var fading = false;
+    new MutationObserver(function () {
+      if (fading) return;
+      fading = true;
+      infoContent.classList.add('og-swap');
+      requestAnimationFrame(function () {
+        infoContent.classList.remove('og-swap');
+        fading = false;
+      });
+    }).observe(infoContent, { childList: true });
+  }
+
+  // Sidebar arrives with a soft slide-fade instead of appearing instantly.
+  var sidebar = document.getElementById('sidebar');
+  if (sidebar && animate && !reduceMotion) {
+    animate(sidebar, { opacity: [0, 1], x: [16, 0] }, { duration: 0.5, easing: [0.16, 1, 0.3, 1] });
+  }
+})();
+</script>
+</body>"""
+
+
+def _add_ui_polish(html_path: Path) -> None:
+    """Patch graphify's exported graph.html with real motion + materials —
+    translucent sidebar, hover/press feedback, counting stat line, a
+    critically-damped node-focus animation, and a fading info panel —
+    instead of flat panels where every state change snaps instantly. Uses
+    Motion (springs/easing) and Lucide (icons) from CDN, both already in use
+    elsewhere on this project; degrades to no-motion if the CDN is blocked or
+    the viewer has prefers-reduced-motion set."""
+    text = html_path.read_text()
+    if "</head>" in text and "onegraph-ui-polish" not in text:
+        text = text.replace("</head>", _UI_POLISH_STYLE, 1)
+    if "</body>" in text and "onegraph-ui-polish-js" not in text:
+        text = text.replace("</body>", _UI_POLISH_SCRIPT, 1)
+    html_path.write_text(text)
 
 
 def deploy_graph_html(html_path: Path, slug: str, site_dir: Path) -> str:
