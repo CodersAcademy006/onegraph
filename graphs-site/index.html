@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneGraph</title>
+<meta name="description" content="Graphify builds the real dependency graph. Gemma 4 narrates it. Wired live into PR-Agent.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.263.1/dist/umd/lucide.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { background: #06100a; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .tracking-display { letter-spacing: -0.02em; }
+  .glow {
+    background:
+      radial-gradient(55% 45% at 50% 0%, rgba(52,211,153,0.16), transparent 70%),
+      linear-gradient(180deg, rgba(16,185,129,0.06), transparent 40%);
+  }
+  .hl-box {
+    background: #0b1f16;
+    border: 1px solid rgba(110,231,183,0.35);
+    box-shadow: 0 0 0 1px rgba(110,231,183,0.08) inset;
+  }
+  .cube { stroke: rgba(110,231,183,0.45); stroke-dasharray: 3 4; fill: none; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  [data-anim] { animation: rise 0.6s cubic-bezier(.22,1,.36,1) both; }
+  [data-anim="hero"] { animation-delay: 0s; }
+  [data-anim="hero-cta"] { animation-delay: .08s; }
+  [data-anim="steps"] { animation-delay: .16s; }
+  [data-anim="stats"] { animation-delay: .24s; }
+  @media (prefers-reduced-motion: reduce) {
+    [data-anim] { animation: none; opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body class="min-h-screen text-zinc-100 antialiased">
+
+<div class="glow pointer-events-none fixed inset-0 -z-10"></div>
+
+<header class="max-w-5xl mx-auto px-6 pt-8 flex items-center justify-between">
+  <div class="flex items-center gap-2 text-sm font-semibold mono">
+    <i data-lucide="share-2" class="w-4 h-4 text-emerald-400"></i>
+    OneGraph
+  </div>
+  <div class="flex items-center gap-4 text-xs text-zinc-500 mono">
+    <span class="hidden sm:inline">Hacktoberfest Hack Day Pune &times; GDG on Campus VU</span>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-6">
+
+  <section class="pt-16 pb-14 text-center relative">
+    <svg class="hidden sm:block absolute -right-2 top-2 w-32 h-32 opacity-70" viewBox="0 0 100 100">
+      <g class="cube" stroke-width="1">
+        <path d="M20 30 L50 15 L80 30 L50 45 Z"/>
+        <path d="M20 30 L20 65 L50 80 L50 45 Z"/>
+        <path d="M80 30 L80 65 L50 80 L50 45 Z"/>
+        <path d="M20 47.5 L50 62.5 L80 47.5"/>
+        <path d="M50 15 L50 45"/>
+      </g>
+    </svg>
+
+    <div data-anim="hero">
+      <p class="mono text-xs text-emerald-400/80 mb-4">built for Hacktoberfest &middot; sponsor track: Graphify</p>
+      <h1 class="tracking-display text-5xl sm:text-7xl font-extrabold leading-[1.02]">OneGraph</h1>
+      <p class="mt-6 text-lg sm:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+        <span class="hl-box mono text-zinc-100 px-1.5 py-0.5 rounded">Graphify</span> builds the real structural
+        dependency graph &mdash; tree-sitter, $0 LLM cost.
+        <span class="hl-box mono text-zinc-100 px-1.5 py-0.5 rounded">Gemma 4</span> narrates it, with citations
+        that trace back to a real file:line, not a guess.
+      </p>
+    </div>
+
+    <div data-anim="hero-cta" class="mt-9 flex flex-wrap items-center justify-center gap-3">
+      <a href="https://github.com/CodersAcademy006/onegraph-graphrisk-demo/pull/1" target="_blank" rel="noopener"
+         class="inline-flex items-center gap-2 rounded-xl bg-zinc-100 text-zinc-900 px-5 py-2.5 text-sm font-semibold hover:bg-white transition-colors">
+        <i data-lucide="github" class="w-4 h-4"></i>
+        Live PR demo
+      </a>
+      <a href="/graphs/showcase-flask.html"
+         class="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 px-5 py-2.5 text-sm font-semibold text-zinc-100 hover:border-emerald-400/60 hover:bg-emerald-400/5 transition-colors">
+        <i data-lucide="network" class="w-4 h-4 text-emerald-400"></i>
+        Open the interactive graph
+        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </a>
+    </div>
+  </section>
+
+  <section data-anim="steps" class="grid sm:grid-cols-3 gap-4 pb-14">
+    <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+      <i data-lucide="git-branch" class="w-5 h-5 text-emerald-400 mb-3"></i>
+      <h3 class="font-semibold text-zinc-100">Graphify extracts</h3>
+      <p class="mt-1.5 text-sm text-zinc-500 leading-relaxed">tree-sitter AST over the real repo &mdash; every call, import and containment edge, $0 LLM cost to build.</p>
+    </div>
+    <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+      <i data-lucide="sparkles" class="w-5 h-5 text-emerald-400 mb-3"></i>
+      <h3 class="font-semibold text-zinc-100">Gemma 4 narrates</h3>
+      <p class="mt-1.5 text-sm text-zinc-500 leading-relaxed">reads the real graph traversal, writes the plain-English review &mdash; cites modules that actually exist.</p>
+    </div>
+    <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+      <i data-lucide="message-square-code" class="w-5 h-5 text-emerald-400 mb-3"></i>
+      <h3 class="font-semibold text-zinc-100">Wired into PR-Agent</h3>
+      <p class="mt-1.5 text-sm text-zinc-500 leading-relaxed">comment <code class="mono text-emerald-300">/graph_risk</code> on any PR &mdash; posts the risk review and a link to the full live graph.</p>
+    </div>
+  </section>
+
+  <section data-anim="stats" class="pb-24">
+    <div class="rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/70 to-zinc-900/20 p-8 sm:p-10">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+        <div>
+          <p class="mono text-xs uppercase tracking-wider text-emerald-400/80 font-semibold">Real scale, not a toy demo</p>
+          <h2 class="mt-2 text-2xl sm:text-3xl font-bold text-zinc-100">Flask, mapped end to end</h2>
+          <p class="mt-2 text-sm text-zinc-500 max-w-md">Every node and edge below is a real extracted symbol from pallets/flask &mdash; nothing trimmed, nothing simulated.</p>
+        </div>
+        <a href="/graphs/showcase-flask.html"
+           class="shrink-0 inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 transition-colors px-5 py-2.5 text-sm font-semibold text-zinc-950">
+          Explore the graph
+          <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+        </a>
+      </div>
+      <div class="mt-8 grid grid-cols-3 gap-3 sm:gap-4">
+        <div class="hl-box rounded-xl py-4 text-center">
+          <div class="mono text-3xl sm:text-4xl font-bold text-zinc-100">2,151</div>
+          <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">nodes</div>
+        </div>
+        <div class="hl-box rounded-xl py-4 text-center">
+          <div class="mono text-3xl sm:text-4xl font-bold text-zinc-100">3,569</div>
+          <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">edges</div>
+        </div>
+        <div class="hl-box rounded-xl py-4 text-center">
+          <div class="mono text-3xl sm:text-4xl font-bold text-zinc-100">205</div>
+          <div class="mt-1 text-xs uppercase tracking-wide text-zinc-500">communities</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pb-14 flex flex-wrap items-center justify-center gap-3 text-xs text-zinc-600 mono">
+    <span class="rounded-full border border-zinc-800 px-3 py-1">Best Use of Gemma 4</span>
+    <span class="rounded-full border border-zinc-800 px-3 py-1">Best Open-Source AI Project</span>
+    <span class="rounded-full border border-zinc-800 px-3 py-1">Powered by Graphify</span>
+  </footer>
+
+</main>
+
+<script>lucide.createIcons();</script>
+
+</body>
+</html>
