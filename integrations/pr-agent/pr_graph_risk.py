@@ -71,14 +71,14 @@ class PRGraphRisk:
                 graph_url = onegraph_core.deploy_graph_html(html_path, slug, site_dir)
                 link_section = (
                     f"\n\n### [Open the full interactive graph →]({graph_url})\n"
-                    f"Graphify's own viewer — force layout, community clusters, click any node.\n"
+                    f"Graphify's own viewer: force layout, community clusters, click any node.\n"
                 )
             except Exception:
                 get_logger().exception("/graph_risk: graph.html deploy failed, posting without the live link")
 
             self.git_provider.publish_comment(
                 f"**/graph_risk** (Graphify + Gemma 4, grounded in real call-graph edges)\n\n"
-                f"**Risk: {level}** — full repo graph: **{node_count:,} nodes / {edge_count:,} edges** "
+                f"**Risk: {level}**, full repo graph: **{node_count:,} nodes / {edge_count:,} edges** "
                 f"(tree-sitter, $0 LLM cost to build)\n\n"
                 f"### Changed files\n{file_table}\n\n"
                 f"### Analysis\n{risk_text}{link_section}{graph_section}"
@@ -86,7 +86,7 @@ class PRGraphRisk:
         except Exception:
             get_logger().exception("/graph_risk failed")
             self.git_provider.publish_comment(
-                "**/graph_risk** failed to run — see server logs."
+                "**/graph_risk** failed to run. See server logs."
             )
         finally:
             if local_path is not None:
@@ -103,7 +103,7 @@ class PRGraphRisk:
     def _file_table(self, per_file: dict) -> str:
         rows = ["| File | Downstream dependents | Affects |", "|---|---|---|"]
         for filename, (count, examples) in per_file.items():
-            affects = ", ".join(f"`{e}`" for e in examples) or "—"
+            affects = ", ".join(f"`{e}`" for e in examples) or "none"
             if count > len(examples):
                 affects += f" (+{count - len(examples)} more)"
             rows.append(f"| `{filename}` | {count} | {affects} |")
