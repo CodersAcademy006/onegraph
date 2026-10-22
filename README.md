@@ -1,18 +1,28 @@
+<div align="center">
+
 # OneGraph
 
-Built at **Hacktoberfest Hack Day Pune x GDG on Campus - VU**, 2026-10-22.
-Sponsor tool: **Graphify**. Tracks: **Best Use of Gemma 4**, **Best Open-Source AI Project**.
+### Graphify builds the real dependency graph. Gemma 4 narrates it. $0 LLM cost to build it.
 
-**Graphify builds the real structural dependency graph** of a repo (tree-sitter
-AST, $0 LLM cost). **Gemma 4 narrates it** — every claim it makes traces back
-to a real graph edge, never a guess. One shared core, wired into PR-Agent as a
-`/graph_risk` command.
+[![nodes](https://img.shields.io/badge/NODES-2%2C151-10b981?style=for-the-badge&labelColor=06100a)](https://graphs-site-omega.vercel.app/graphs/showcase-flask.html)
+[![edges](https://img.shields.io/badge/EDGES-3%2C569-10b981?style=for-the-badge&labelColor=06100a)](https://graphs-site-omega.vercel.app/graphs/showcase-flask.html)
+[![communities](https://img.shields.io/badge/COMMUNITIES-205-10b981?style=for-the-badge&labelColor=06100a)](https://graphs-site-omega.vercel.app/graphs/showcase-flask.html)
+[![llm cost](https://img.shields.io/badge/GRAPH_LLM_COST-%240-10b981?style=for-the-badge&labelColor=06100a)](https://graphs-site-omega.vercel.app/graphs/showcase-flask.html)
 
-### Live
+Built at **Hacktoberfest Hack Day Pune × GDG on Campus - VU**, 2026-10-22.
+Sponsor tool: **Graphify**. Tracks: **Best Use of Gemma 4** · **Best Open-Source AI Project**
 
-- **Landing / interactive graph viewer:** https://graphs-site-omega.vercel.app/
-- **Live PR demo (real repo, real comment):** https://github.com/CodersAcademy006/onegraph-flask-demo/pull/1
-- **Full interactive graph (Graphify's own viewer, 2,151 nodes / 3,569 edges):** https://graphs-site-omega.vercel.app/graphs/showcase-flask.html
+[**Open the live graph**](https://graphs-site-omega.vercel.app/graphs/showcase-flask.html) · [**Live PR demo**](https://github.com/CodersAcademy006/onegraph-flask-demo/pull/1) · [**Landing page**](https://graphs-site-omega.vercel.app/)
+
+<a href="https://graphs-site-omega.vercel.app/graphs/showcase-flask.html">
+  <img src="docs/hero.png" width="920" alt="Every one of the 2,151 nodes and 3,569 edges Graphify extracted from pallets/flask, rendered live and clickable">
+</a>
+
+<sub>Real output of <code>graphify export html</code> on <a href="https://github.com/pallets/flask">pallets/flask</a> — not a mockup. Every dot above is a real function, class, or file; every line a real call/import edge.</sub>
+
+</div>
+
+---
 
 ## How it works
 
@@ -48,16 +58,6 @@ run it on the real repo and host the output, nothing more.
   ```
 - **`graphs-site/`** — the static site: landing page + one hosted
   `graph.html` per repo/PR, deployed to Vercel on every `/graph_risk` run.
-
-## Real numbers, not a toy demo
-
-Every stat below is read straight out of `graphify extract`'s own
-`graph.json` for [pallets/flask](https://github.com/pallets/flask) — nothing
-trimmed, nothing simulated:
-
-| nodes | edges | communities |
-|---|---|---|
-| 2,151 | 3,569 | 205 |
 
 ## Why this exists
 
